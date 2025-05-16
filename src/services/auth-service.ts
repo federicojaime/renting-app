@@ -1,3 +1,4 @@
+// src/services/auth-service.ts
 import axios from 'axios';
 
 const api = axios.create({
@@ -24,6 +25,14 @@ export const authService = {
       
       // Si es un error de red u otro tipo, lanzar el error para manejarlo en el componente
       throw error;
+    }
+  },
+  
+  // Añadir este método que está faltando
+  setAuthData: (authData) => {
+    if (authData && authData.token) {
+      localStorage.setItem('token', authData.token);
+      localStorage.setItem('user', JSON.stringify(authData.user || {}));
     }
   },
   

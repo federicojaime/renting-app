@@ -4,7 +4,7 @@ import Layout from '../../components/layout/Layout';
 import Button from '../../components/common/Button';
 import { vehicleService } from '../../services/vehicle-service';
 import { rentalService } from '../../services/rental-service';
-import { ArrowLeft, Edit, Car, Calendar, Tool, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Edit, Car, Calendar, Wrench, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function VehicleDetailPage() {
@@ -73,7 +73,7 @@ export default function VehicleDetailPage() {
             case 'ALQUILADA':
                 return <Calendar className="text-blue-500" />;
             case 'MANTENIMIENTO':
-                return <Tool className="text-yellow-500" />;
+                return <Wrench className="text-yellow-500" />;
             case 'BAJA':
                 return <AlertTriangle className="text-red-500" />;
             default:
