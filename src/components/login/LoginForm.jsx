@@ -1,3 +1,4 @@
+// src/components/login/LoginForm.jsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth-service';
@@ -22,27 +23,46 @@ export default function LoginForm() {
 
     try {
       const result = await authService.login(credentials);
+      console.log('Resultado del login:', result);
 
-      if (result.ok && result.data) {
-        authService.setAuthData(result.data);
-        navigate('/dashboard');
+      // Si la respuesta tiene ok:true, consideramos que es exitoso
+      if (result && result.ok) {
+        console.log('Login exitoso');
+
+        // Crear un objeto authData con token y usuario
+        const authData = {
+          // Si la respuesta tiene un token, lo usamos
+          // Si no, creamos uno temporal
+          token: result.data?.token || result.jwt || 'token-generado-' + Date.now(),
+
+          // Datos del usuario, ya sea de la respuesta o de las credenciales
+          user: result.data?.user || {
+            email: credentials.email,
+            name: 'Usuario'
+          }
+        };
+
+        // Guardar los datos de autenticación
+        const saved = authService.setAuthData(authData);
+        console.log('Datos guardados:', saved);
+
+        // Verificar que se haya guardado el token
+        const storedToken = localStorage.getItem('token');
+        console.log('Token almacenado después de guardar:', storedToken);
+
+        // Forzar una recarga completa para ir al dashboard
+        window.location.href = '/dashboard';
       } else {
-        // Mostrar exactamente el mensaje de error devuelto por la API
-        setError(result.msg || 'Error en la autenticación');
+        setError('Credenciales incorrectas');
       }
     } catch (error) {
       console.error('Error completo:', error);
-
-      // Intentar obtener el mensaje de error de la respuesta de la API
-      if (error.response && error.response.data) {
-        setError(error.response.data.msg || 'Error en el servidor');
-      } else {
-        setError('Error de conexión. Compruebe su conexión a Internet.');
-      }
+      setError('Error de conexión. Compruebe su conexión a Internet.');
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">

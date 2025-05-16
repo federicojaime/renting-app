@@ -13,17 +13,22 @@ import ReportsPage from './pages/reports/ReportsPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { Toaster } from 'react-hot-toast';
+import { authService } from './services/auth-service';
 
-// Componente para proteger rutas
+// Componente para proteger rutas - simplificado
 const ProtectedRoute = ({ children }) => {
-  // Verificar si el usuario está autenticado
-  const isAuthenticated = localStorage.getItem('token') !== null;
-  
+  // Verificar la autenticación
+  const isAuthenticated = authService.isAuthenticated();
+  console.log('¿Está autenticado?', isAuthenticated);
+
+  // Si no está autenticado, redirigir al login
   if (!isAuthenticated) {
-    // Redirigir al login si no está autenticado
+    console.log('No autenticado, redirigiendo a login');
     return <Navigate to="/login" replace />;
   }
-  
+
+  // Si está autenticado, mostrar el contenido
+  console.log('Autenticado, mostrando ruta protegida');
   return children;
 };
 
@@ -32,126 +37,119 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Rutas públicas */}
-        <Route path="/login" element={<LoginPage />} />
-        
+        <Route
+          path="/login"
+          element={
+            authService.isAuthenticated() ?
+              <Navigate to="/dashboard" replace /> :
+              <LoginPage />
+          }
+        />
+
         {/* Rutas protegidas */}
-        <Route 
-          path="/dashboard" 
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <DashboardPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/vehicles" 
+
+        <Route
+          path="/vehicles"
           element={
             <ProtectedRoute>
               <VehiclesPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/vehicles/:id" 
+
+        <Route
+          path="/vehicles/:id"
           element={
             <ProtectedRoute>
               <VehicleDetailPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/clients" 
+
+        <Route
+          path="/clients"
           element={
             <ProtectedRoute>
               <ClientsPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/clients/:id" 
+
+        <Route
+          path="/clients/:id"
           element={
             <ProtectedRoute>
               <ClientDetailPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/rentals" 
+
+        <Route
+          path="/rentals"
           element={
             <ProtectedRoute>
               <RentalsPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/rentals/:id" 
+
+        <Route
+          path="/rentals/:id"
           element={
             <ProtectedRoute>
               <RentalDetailPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/reports" 
+
+        <Route
+          path="/reports"
           element={
             <ProtectedRoute>
               <ReportsPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
-        <Route 
-          path="/settings" 
+
+        <Route
+          path="/settings"
           element={
             <ProtectedRoute>
               <SettingsPage />
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
         {/* Ruta por defecto - redirige a dashboard si está autenticado, o a login si no */}
-        <Route 
-          path="/" 
+        <Route
+          path="/"
           element={
-            localStorage.getItem('token') !== null ? 
-              <Navigate to="/dashboard" replace /> : 
+            authService.isAuthenticated() ?
+              <Navigate to="/dashboard" replace /> :
               <Navigate to="/login" replace />
-          } 
+          }
         />
-        
+
         {/* Ruta de página no encontrada */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
-      
+
       {/* Sistema de notificaciones */}
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           duration: 4000,
           style: {
             background: '#363636',
             color: '#fff',
-          },
-          success: {
-            duration: 3000,
-            iconTheme: {
-              primary: '#10B981',
-              secondary: 'white',
-            },
-          },
-          error: {
-            duration: 5000,
-            iconTheme: {
-              primary: '#EF4444',
-              secondary: 'white',
-            },
           },
         }}
       />
