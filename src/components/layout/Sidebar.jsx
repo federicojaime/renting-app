@@ -24,21 +24,7 @@ export default function Sidebar() {
 
     return (
         <div className="w-64 bg-white shadow-lg">
-            <div className="p-4 border-b">
-                <img src="/logo.png" alt="Logo" className="h-8 mx-auto" />
-            </div>
-
             <div className="p-4">
-                <div className="flex items-center mb-6">
-                    <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
-                        {user?.firstname?.charAt(0)}{user?.lastname?.charAt(0)}
-                    </div>
-                    <div className="ml-3">
-                        <p className="text-sm font-medium">{user?.firstname} {user?.lastname}</p>
-                        <p className="text-xs text-gray-500">Admin</p>
-                    </div>
-                </div>
-
                 <nav className="space-y-1">
                     {menuItems.map((item) => (
                         <NavLink
