@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { clientService } from '../../services/client-service';
 import Button from '../common/Button';
 import Input from '../common/Input';
-import { Save, X } from 'lucide-react';
+import { Save, X, AlertTriangle } from 'lucide-react';
 
 export default function ClientForm({ client = null, onSubmit, onCancel }) {
     const [form, setForm] = useState({
@@ -47,6 +47,23 @@ export default function ClientForm({ client = null, onSubmit, onCancel }) {
         }
     };
 
+    // Solo permitir cambiar el tipo de cliente si es un cliente nuevo
+    const handleTipoClienteChange = (e) => {
+        // Si estamos editando un cliente, no permitir el cambio
+        if (client) {
+            return;
+        }
+
+        const value = e.target.value;
+        setForm(prev => ({
+            ...prev,
+            tipoCliente: value,
+            // Limpiar campos específicos al cambiar el tipo
+            nombre: value === 'persona' ? prev.nombre : '',
+            razonSocial: value === 'empresa' ? prev.razonSocial : ''
+        }));
+    };
+
     const validate = () => {
         const newErrors = {};
 
@@ -79,12 +96,29 @@ export default function ClientForm({ client = null, onSubmit, onCancel }) {
         try {
             let result;
 
+            // Preparar datos según el tipo de cliente
+            const clientData = {
+                tipoCliente: form.tipoCliente,
+                dniCuit: form.dniCuit,
+                telefono: form.telefono,
+                email: form.email
+            };
+
+            // Agregar campos específicos según el tipo de cliente
+            if (form.tipoCliente === 'persona') {
+                clientData.nombre = form.nombre;
+                clientData.razonSocial = ''; // Limpiar campo no utilizado
+            } else {
+                clientData.razonSocial = form.razonSocial;
+                clientData.nombre = ''; // Limpiar campo no utilizado
+            }
+
             if (client) {
                 // Actualizar cliente existente
-                result = await clientService.updateClient(client.id, form);
+                result = await clientService.updateClient(client.id, clientData);
             } else {
                 // Crear nuevo cliente
-                result = await clientService.createClient(form);
+                result = await clientService.createClient(clientData);
             }
 
             if (result.ok) {
@@ -120,10 +154,11 @@ export default function ClientForm({ client = null, onSubmit, onCancel }) {
                             type="radio"
                             value="persona"
                             checked={form.tipoCliente === 'persona'}
-                            onChange={handleChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            onChange={handleTipoClienteChange}
+                            disabled={!!client} // Deshabilitar si es edición
+                            className={`h-4 w-4 ${client ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 focus:ring-blue-500'} border-gray-300`}
                         />
-                        <label htmlFor="tipoPersona" className="ml-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="tipoPersona" className={`ml-2 block text-sm font-medium ${client && form.tipoCliente !== 'persona' ? 'text-gray-400' : 'text-gray-700'}`}>
                             Persona Física
                         </label>
                     </div>
@@ -135,14 +170,22 @@ export default function ClientForm({ client = null, onSubmit, onCancel }) {
                             type="radio"
                             value="empresa"
                             checked={form.tipoCliente === 'empresa'}
-                            onChange={handleChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            onChange={handleTipoClienteChange}
+                            disabled={!!client} // Deshabilitar si es edición
+                            className={`h-4 w-4 ${client ? 'text-gray-400 cursor-not-allowed' : 'text-blue-600 focus:ring-blue-500'} border-gray-300`}
                         />
-                        <label htmlFor="tipoEmpresa" className="ml-2 block text-sm font-medium text-gray-700">
+                        <label htmlFor="tipoEmpresa" className={`ml-2 block text-sm font-medium ${client && form.tipoCliente !== 'empresa' ? 'text-gray-400' : 'text-gray-700'}`}>
                             Empresa
                         </label>
                     </div>
                 </div>
+
+                {client && (
+                    <div className="mt-2 text-xs text-amber-600 flex items-center">
+                        <AlertTriangle size={14} className="mr-1" />
+                        No se puede cambiar el tipo de cliente una vez creado
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

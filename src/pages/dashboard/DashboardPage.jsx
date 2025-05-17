@@ -1,3 +1,4 @@
+// src/pages/dashboard/DashboardPage.jsx
 import React, { useEffect, useState } from 'react';
 import Layout from '../../components/layout/Layout';
 import {
@@ -10,7 +11,7 @@ import {
     XCircle,
     Clock,
     Eye,
-    SearchIcon
+    Search
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { vehicleService } from '../../services/vehicle-service';
@@ -73,7 +74,19 @@ const StatCard = ({ title, value, icon, trend, colorScheme = "blue" }) => {
 };
 
 // Componente Tabla de Alquileres Recientes
-const RecentRentalsTable = ({ rentals }) => {
+const RecentRentalsTable = ({ rentals, searchTerm, onSearch }) => {
+    // Filtrar alquileres según término de búsqueda
+    const filteredRentals = rentals.filter(rental => {
+        if (!searchTerm) return true;
+        
+        const searchLower = searchTerm.toLowerCase();
+        return (
+            (rental.clientName && rental.clientName.toLowerCase().includes(searchLower)) ||
+            (rental.vehicleInfo && rental.vehicleInfo.toLowerCase().includes(searchLower)) ||
+            (rental.date && rental.date.toLowerCase().includes(searchLower))
+        );
+    });
+
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="border-b border-gray-200 p-5 flex justify-between items-center">
@@ -84,9 +97,11 @@ const RecentRentalsTable = ({ rentals }) => {
                             type="text"
                             placeholder="Buscar..."
                             className="pl-9 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white text-gray-800"
+                            value={searchTerm}
+                            onChange={(e) => onSearch(e.target.value)}
                         />
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            <SearchIcon size={16} />
+                            <Search size={16} />
                         </div>
                     </div>
                 </div>
@@ -104,33 +119,47 @@ const RecentRentalsTable = ({ rentals }) => {
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {rentals.map((rental, index) => (
-                            <tr key={rental.id || index} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm font-medium text-gray-900">{rental.clientName}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">{rental.vehicleInfo}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-500">{rental.date}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${rental.status === 'Activo'
-                                        ? 'bg-green-100 text-green-800'
-                                        : 'bg-blue-100 text-blue-800'
-                                        }`}>
-                                        {rental.status}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                    <Link to={`/rentals/${rental.id}`} className="text-blue-600 hover:text-blue-900 flex items-center justify-end">
-                                        <Eye size={16} className="mr-1" />
-                                        Ver
-                                    </Link>
+                        {filteredRentals.length > 0 ? (
+                            filteredRentals.map((rental, index) => (
+                                <tr key={rental.id || index} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-medium text-gray-900">{rental.clientName}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-900">{rental.vehicleInfo}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-500">{rental.date}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${rental.status === 'Activo'
+                                            ? 'bg-green-100 text-green-800'
+                                            : 'bg-blue-100 text-blue-800'
+                                            }`}>
+                                            {rental.status}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <Link to={`/rentals/${rental.id}`} className="text-blue-600 hover:text-blue-900 flex items-center justify-end">
+                                            <Eye size={16} className="mr-1" />
+                                            Ver
+                                        </Link>
+                                    </td>
+                                </tr>
+                            ))
+                        ) : (
+                            <tr>
+                                <td colSpan="5" className="px-6 py-4 text-center">
+                                    <div className="text-gray-500 py-4">
+                                        <div className="flex justify-center mb-3">
+                                            <Search size={48} className="text-gray-300" />
+                                        </div>
+                                        <p className="text-lg font-medium">No se encontraron resultados</p>
+                                        <p className="text-sm">Intente con otros términos de búsqueda</p>
+                                    </div>
                                 </td>
                             </tr>
-                        ))}
+                        )}
                     </tbody>
                 </table>
             </div>
@@ -288,6 +317,7 @@ const VehicleStatusChart = ({ vehicleStats }) => {
 
 export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
     const [stats, setStats] = useState({
         totalVehicles: 0,
         activeRentals: 0,
@@ -303,134 +333,139 @@ export default function DashboardPage() {
     });
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                // Datos ficticios en caso de error
-                let defaultVehicleStats = {
-                    disponibles: 16,
-                    alquilados: 2,
-                    mantenimiento: 0,
-                    baja: 0
-                };
-
-                let defaultRentals = [
-                    {
-                        id: 1,
-                        clientName: 'Federico Jaime',
-                        vehicleInfo: 'AC-NISSAN 15-FRONTIER S 4X2 MT 2.3 D CD - AF526UA',
-                        date: '6/2/2025',
-                        status: 'Finalizado'
-                    },
-                    {
-                        id: 2,
-                        clientName: 'María González',
-                        vehicleInfo: 'Toyota Hilux 2.8 - AD432XZ',
-                        date: '10/2/2025',
-                        status: 'Activo'
-                    },
-                    {
-                        id: 3,
-                        clientName: 'Carlos Rodríguez',
-                        vehicleInfo: 'Ford Ranger 3.2 - AF789TH',
-                        date: '15/2/2025',
-                        status: 'Activo'
-                    }
-                ];
-
-                const defaultStats = {
-                    totalVehicles: 18,
-                    activeRentals: 8,
-                    totalClients: 34,
-                    monthlyRevenue: 156800
-                };
-
-                // Intentar cargar datos reales
-                const [vehiclesRes, rentalsRes, clientsRes] = await Promise.all([
-                    vehicleService.getVehicles().catch(() => ({ ok: false })),
-                    rentalService.getRentals().catch(() => ({ ok: false })),
-                    clientService.getClients().catch(() => ({ ok: false }))
-                ]);
-
-                // Procesar datos de vehículos
-                if (vehiclesRes.ok && Array.isArray(vehiclesRes.data)) {
-                    const vehicles = vehiclesRes.data;
-                    setVehicleStats({
-                        disponibles: vehicles.filter(v => v.estado === 'DISPONIBLE').length || defaultVehicleStats.disponibles,
-                        alquilados: vehicles.filter(v => v.estado === 'ALQUILADA').length || defaultVehicleStats.alquilados,
-                        mantenimiento: vehicles.filter(v => v.estado === 'MANTENIMIENTO').length || defaultVehicleStats.mantenimiento,
-                        baja: vehicles.filter(v => v.estado === 'BAJA').length || defaultVehicleStats.baja
-                    });
-
-                    setStats(prev => ({
-                        ...prev,
-                        totalVehicles: vehicles.length || defaultStats.totalVehicles
-                    }));
-                } else {
-                    setVehicleStats(defaultVehicleStats);
-                    setStats(prev => ({
-                        ...prev,
-                        totalVehicles: defaultStats.totalVehicles
-                    }));
-                }
-
-                // Procesar datos de alquileres
-                if (rentalsRes.ok && Array.isArray(rentalsRes.data)) {
-                    const rentals = rentalsRes.data;
-                    const formattedRentals = rentals.slice(0, 5).map(r => ({
-                        id: r.id,
-                        clientName: r.cliente_nombre || 'Cliente',
-                        vehicleInfo: `${r.marca || ''} ${r.modelo || ''} - ${r.patente || ''}`.trim(),
-                        date: r.fecha_entrega ? new Date(r.fecha_entrega).toLocaleDateString() : '',
-                        status: r.fecha_devolucion ? 'Finalizado' : 'Activo'
-                    }));
-
-                    if (formattedRentals.length > 0) {
-                        setRecentRentals(formattedRentals);
-                    } else {
-                        setRecentRentals(defaultRentals);
-                    }
-
-                    setStats(prev => ({
-                        ...prev,
-                        activeRentals: rentals.filter(r => !r.fecha_devolucion).length || defaultStats.activeRentals
-                    }));
-                } else {
-                    setRecentRentals(defaultRentals);
-                    setStats(prev => ({
-                        ...prev,
-                        activeRentals: defaultStats.activeRentals
-                    }));
-                }
-
-                // Procesar datos de clientes
-                if (clientsRes.ok && Array.isArray(clientsRes.data)) {
-                    setStats(prev => ({
-                        ...prev,
-                        totalClients: clientsRes.data.length || defaultStats.totalClients
-                    }));
-                } else {
-                    setStats(prev => ({
-                        ...prev,
-                        totalClients: defaultStats.totalClients
-                    }));
-                }
-
-                // Establecer ingresos mensuales (dato ficticio)
-                setStats(prev => ({
-                    ...prev,
-                    monthlyRevenue: defaultStats.monthlyRevenue
-                }));
-
-            } catch (error) {
-                console.error('Error al cargar datos del dashboard:', error);
-                // Los datos por defecto ya están establecidos
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchData();
     }, []);
+
+    const fetchData = async () => {
+        try {
+            // Datos ficticios en caso de error
+            let defaultVehicleStats = {
+                disponibles: 16,
+                alquilados: 2,
+                mantenimiento: 0,
+                baja: 0
+            };
+
+            let defaultRentals = [
+                {
+                    id: 1,
+                    clientName: 'Federico Jaime',
+                    vehicleInfo: 'AC-NISSAN 15-FRONTIER S 4X2 MT 2.3 D CD - AF526UA',
+                    date: '6/2/2025',
+                    status: 'Finalizado'
+                },
+                {
+                    id: 2,
+                    clientName: 'María González',
+                    vehicleInfo: 'Toyota Hilux 2.8 - AD432XZ',
+                    date: '10/2/2025',
+                    status: 'Activo'
+                },
+                {
+                    id: 3,
+                    clientName: 'Carlos Rodríguez',
+                    vehicleInfo: 'Ford Ranger 3.2 - AF789TH',
+                    date: '15/2/2025',
+                    status: 'Activo'
+                }
+            ];
+
+            const defaultStats = {
+                totalVehicles: 18,
+                activeRentals: 8,
+                totalClients: 34,
+                monthlyRevenue: 156800
+            };
+
+            // Intentar cargar datos reales
+            const [vehiclesRes, rentalsRes, clientsRes] = await Promise.all([
+                vehicleService.getVehicles().catch(() => ({ ok: false })),
+                rentalService.getRentals().catch(() => ({ ok: false })),
+                clientService.getClients().catch(() => ({ ok: false }))
+            ]);
+
+            // Procesar datos de vehículos
+            if (vehiclesRes.ok && Array.isArray(vehiclesRes.data)) {
+                const vehicles = vehiclesRes.data;
+                setVehicleStats({
+                    disponibles: vehicles.filter(v => v.estado === 'DISPONIBLE').length || defaultVehicleStats.disponibles,
+                    alquilados: vehicles.filter(v => v.estado === 'ALQUILADA').length || defaultVehicleStats.alquilados,
+                    mantenimiento: vehicles.filter(v => v.estado === 'MANTENIMIENTO').length || defaultVehicleStats.mantenimiento,
+                    baja: vehicles.filter(v => v.estado === 'BAJA').length || defaultVehicleStats.baja
+                });
+
+                setStats(prev => ({
+                    ...prev,
+                    totalVehicles: vehicles.length || defaultStats.totalVehicles
+                }));
+            } else {
+                setVehicleStats(defaultVehicleStats);
+                setStats(prev => ({
+                    ...prev,
+                    totalVehicles: defaultStats.totalVehicles
+                }));
+            }
+
+            // Procesar datos de alquileres
+            if (rentalsRes.ok && Array.isArray(rentalsRes.data)) {
+                const rentals = rentalsRes.data;
+                const formattedRentals = rentals.slice(0, 5).map(r => ({
+                    id: r.id,
+                    clientName: r.cliente_nombre || 'Cliente',
+                    vehicleInfo: `${r.marca || ''} ${r.modelo || ''} - ${r.patente || ''}`.trim(),
+                    date: r.fecha_entrega ? new Date(r.fecha_entrega).toLocaleDateString() : '',
+                    status: r.fecha_devolucion ? 'Finalizado' : 'Activo'
+                }));
+
+                if (formattedRentals.length > 0) {
+                    setRecentRentals(formattedRentals);
+                } else {
+                    setRecentRentals(defaultRentals);
+                }
+
+                setStats(prev => ({
+                    ...prev,
+                    activeRentals: rentals.filter(r => !r.fecha_devolucion).length || defaultStats.activeRentals
+                }));
+            } else {
+                setRecentRentals(defaultRentals);
+                setStats(prev => ({
+                    ...prev,
+                    activeRentals: defaultStats.activeRentals
+                }));
+            }
+
+            // Procesar datos de clientes
+            if (clientsRes.ok && Array.isArray(clientsRes.data)) {
+                setStats(prev => ({
+                    ...prev,
+                    totalClients: clientsRes.data.length || defaultStats.totalClients
+                }));
+            } else {
+                setStats(prev => ({
+                    ...prev,
+                    totalClients: defaultStats.totalClients
+                }));
+            }
+
+            // Establecer ingresos mensuales (dato ficticio)
+            setStats(prev => ({
+                ...prev,
+                monthlyRevenue: defaultStats.monthlyRevenue
+            }));
+
+        } catch (error) {
+            console.error('Error al cargar datos del dashboard:', error);
+            // Los datos por defecto ya están establecidos
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Función para manejar la búsqueda
+    const handleSearch = (term) => {
+        setSearchTerm(term);
+    };
 
     if (loading) {
         return (
@@ -492,7 +527,11 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Tabla de alquileres recientes - 7 columnas */}
                     <div className="lg:col-span-7">
-                        <RecentRentalsTable rentals={recentRentals} />
+                        <RecentRentalsTable 
+                            rentals={recentRentals} 
+                            searchTerm={searchTerm}
+                            onSearch={handleSearch}
+                        />
                     </div>
 
                     {/* Gráfico circular - 5 columnas */}

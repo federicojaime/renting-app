@@ -1,23 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { vehicleService } from '../../services/vehicle-service';
-import Button from '../common/Button';
-import Input from '../common/Input';
-import { Save, X } from 'lucide-react';
+import { Calendar, Shield, X, Save, ChevronDown } from 'lucide-react';
+
+// Componente de input personalizado para unificar el estilo
+const FormInput = ({
+    label,
+    name,
+    value,
+    onChange,
+    type = 'text',
+    error,
+    required = false,
+    className = '',
+    placeholder = '',
+    min,
+    step,
+    icon
+}) => (
+    <div className="space-y-2">
+        <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+            {label}{required && <span className="text-red-500 ml-1">*</span>}
+        </label>
+        <div className="relative">
+            <input
+                id={name}
+                name={name}
+                type={type}
+                value={value}
+                onChange={onChange}
+                className={`w-full px-3 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${icon ? 'pr-10' : ''} ${className}`}
+                placeholder={placeholder}
+                required={required}
+                min={min}
+                step={step}
+            />
+            {icon && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-400">
+                    {icon}
+                </div>
+            )}
+        </div>
+        {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+    </div>
+);
 
 export default function VehicleForm({ vehicle = null, onSubmit, onCancel }) {
     const [form, setForm] = useState({
         nroInterno: '',
         patente: '',
+        designacion: '',
         marca: '',
         modelo: '',
-        designacion: '',
         adquisicion: '',
         motor: '',
         chasis: '',
         titulo: '',
         estado: 'DISPONIBLE',
-        responsable: '',
-        ministerio: '',
         precio: '',
         // Datos del seguro
         compania: '',
@@ -42,8 +79,6 @@ export default function VehicleForm({ vehicle = null, onSubmit, onCancel }) {
                 chasis: vehicle.nro_chasis || '',
                 titulo: vehicle.titulo || '',
                 estado: vehicle.estado || 'DISPONIBLE',
-                responsable: vehicle.responsable || '',
-                ministerio: vehicle.ministerio || '',
                 precio: vehicle.precio || '',
                 // Datos del seguro
                 compania: vehicle.compania || '',
@@ -62,21 +97,23 @@ export default function VehicleForm({ vehicle = null, onSubmit, onCancel }) {
 
         // Limpiar el error de este campo si existe
         if (errors[name]) {
-            setErrors(prev => ({
-                ...prev,
-                [name]: null
-            }));
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
         }
     };
 
     const validate = () => {
         const newErrors = {};
 
-        // Validaciones básicas
+        // Validaciones para campos requeridos según la API
         if (!form.nroInterno) newErrors.nroInterno = 'Número interno es requerido';
         if (!form.patente) newErrors.patente = 'Patente es requerida';
         if (!form.marca) newErrors.marca = 'Marca es requerida';
         if (!form.modelo) newErrors.modelo = 'Modelo es requerido';
+        if (!form.adquisicion) newErrors.adquisicion = 'Fecha de adquisición es requerida';
         if (!form.motor) newErrors.motor = 'Número de motor es requerido';
         if (!form.chasis) newErrors.chasis = 'Número de chasis es requerido';
 
@@ -97,33 +134,35 @@ export default function VehicleForm({ vehicle = null, onSubmit, onCancel }) {
 
         setLoading(true);
         try {
-            let result;
+            // Mapear datos del formulario al formato esperado por la API
+            const vehicleData = {
+                nroInterno: form.nroInterno,
+                patente: form.patente,
+                marca: form.marca,
+                modelo: form.modelo,
+                designacion: form.designacion,
+                adquisicion: form.adquisicion,
+                motor: form.motor,
+                chasis: form.chasis,
+                titulo: form.titulo,
+                estado: form.estado,
+                responsable: form.responsable || '',
+                ministerio: form.ministerio || '',
+                precio: form.precio,
+                compania: form.compania,
+                nroPoliza: form.nroPoliza,
+                vencimiento: form.vencimiento
+            };
 
-            if (vehicle) {
-                // Actualizar vehículo existente
-                result = await vehicleService.updateVehicle(vehicle.id, form);
-            } else {
-                // Crear nuevo vehículo
-                result = await vehicleService.createVehicle(form);
+            // Si el vehículo ya existe, preservar su ID
+            if (vehicle && vehicle.id) {
+                vehicleData.id = vehicle.id;
             }
 
-            if (result.ok) {
-                onSubmit(result.data);
-            } else {
-                // Manejar errores de validación del servidor
-                if (result.errores) {
-                    setErrors(result.errores.reduce((acc, error) => {
-                        const field = error.split(' ')[0].toLowerCase();
-                        acc[field] = error;
-                        return acc;
-                    }, {}));
-                } else {
-                    alert(result.msg || 'Error al guardar el vehículo');
-                }
-            }
+            onSubmit(vehicleData);
         } catch (error) {
-            console.error('Error al guardar vehículo:', error);
-            alert('Error de conexión. Intente nuevamente.');
+            console.error('Error al procesar formulario:', error);
+            toast.error('Error al procesar el formulario');
         } finally {
             setLoading(false);
         }
@@ -131,184 +170,194 @@ export default function VehicleForm({ vehicle = null, onSubmit, onCancel }) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
-                    id="nroInterno"
-                    name="nroInterno"
-                    label="Número Interno"
-                    value={form.nroInterno}
-                    onChange={handleChange}
-                    error={errors.nroInterno}
-                    required
-                />
-
-                <Input
-                    id="patente"
-                    name="patente"
-                    label="Patente"
-                    value={form.patente}
-                    onChange={handleChange}
-                    error={errors.patente}
-                    required
-                />
-
-                <Input
-                    id="designacion"
-                    name="designacion"
-                    label="Designación"
-                    value={form.designacion}
-                    onChange={handleChange}
-                    error={errors.designacion}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
-                    id="marca"
-                    name="marca"
-                    label="Marca"
-                    value={form.marca}
-                    onChange={handleChange}
-                    error={errors.marca}
-                    required
-                />
-
-                <Input
-                    id="modelo"
-                    name="modelo"
-                    label="Modelo"
-                    value={form.modelo}
-                    onChange={handleChange}
-                    error={errors.modelo}
-                    required
-                />
-
-                <Input
-                    id="adquisicion"
-                    name="adquisicion"
-                    label="Fecha Adquisición"
-                    type="date"
-                    value={form.adquisicion}
-                    onChange={handleChange}
-                    error={errors.adquisicion}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                    id="motor"
-                    name="motor"
-                    label="Número de Motor"
-                    value={form.motor}
-                    onChange={handleChange}
-                    error={errors.motor}
-                    required
-                />
-
-                <Input
-                    id="chasis"
-                    name="chasis"
-                    label="Número de Chasis"
-                    value={form.chasis}
-                    onChange={handleChange}
-                    error={errors.chasis}
-                    required
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label htmlFor="estado" className="block text-sm font-medium text-gray-700 mb-1">
-                        Estado <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                        id="estado"
-                        name="estado"
-                        className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                        value={form.estado}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border border-blue-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <FormInput
+                        label="Número Interno"
+                        name="nroInterno"
+                        value={form.nroInterno}
                         onChange={handleChange}
+                        error={errors.nroInterno}
                         required
-                    >
-                        <option value="DISPONIBLE">Disponible</option>
-                        <option value="ALQUILADA">Alquilada</option>
-                        <option value="MANTENIMIENTO">Mantenimiento</option>
-                        <option value="BAJA">Baja</option>
-                    </select>
-                    {errors.estado && <p className="mt-1 text-sm text-red-600">{errors.estado}</p>}
+                    />
+
+                    <FormInput
+                        label="Patente"
+                        name="patente"
+                        value={form.patente}
+                        onChange={handleChange}
+                        error={errors.patente}
+                        required
+                        className="uppercase"
+                    />
+
+                    <FormInput
+                        label="Designación"
+                        name="designacion"
+                        value={form.designacion}
+                        onChange={handleChange}
+                        error={errors.designacion}
+                    />
                 </div>
 
-                <Input
-                    id="titulo"
-                    name="titulo"
-                    label="Título"
-                    value={form.titulo}
-                    onChange={handleChange}
-                    error={errors.titulo}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                    <FormInput
+                        label="Marca"
+                        name="marca"
+                        value={form.marca}
+                        onChange={handleChange}
+                        error={errors.marca}
+                        required
+                    />
 
-                <Input
-                    id="precio"
-                    name="precio"
-                    label="Precio"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.precio}
-                    onChange={handleChange}
-                    error={errors.precio}
-                />
+                    <FormInput
+                        label="Modelo"
+                        name="modelo"
+                        value={form.modelo}
+                        onChange={handleChange}
+                        error={errors.modelo}
+                        required
+                    />
+
+                    <FormInput
+                        label="Fecha Adquisición"
+                        name="adquisicion"
+                        value={form.adquisicion}
+                        onChange={handleChange}
+                        type="date"
+                        icon={<Calendar size={18} />}
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                    <FormInput
+                        label="Número de Motor"
+                        name="motor"
+                        value={form.motor}
+                        onChange={handleChange}
+                        error={errors.motor}
+                        required
+                    />
+
+                    <FormInput
+                        label="Número de Chasis"
+                        name="chasis"
+                        value={form.chasis}
+                        onChange={handleChange}
+                        error={errors.chasis}
+                        required
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                    {/* Custom select para Estado */}
+                    <div className="space-y-2">
+                        <label htmlFor="estado" className="block text-sm font-medium text-gray-700">
+                            Estado<span className="text-red-500 ml-1">*</span>
+                        </label>
+                        <div className="relative">
+                            <select
+                                id="estado"
+                                name="estado"
+                                value={form.estado}
+                                onChange={handleChange}
+                                className="w-full pl-3 py-2.5 pr-10 bg-white border border-gray-300 rounded-lg shadow-sm text-gray-900 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                required
+                            >
+                                <option value="DISPONIBLE">Disponible</option>
+                                <option value="ALQUILADA">Alquilada</option>
+                                <option value="MANTENIMIENTO">Mantenimiento</option>
+                                <option value="BAJA">Baja</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                <ChevronDown size={18} />
+                            </div>
+                        </div>
+                        {errors.estado && <p className="mt-1 text-sm text-red-600">{errors.estado}</p>}
+                    </div>
+
+                    <FormInput
+                        label="Título"
+                        name="titulo"
+                        value={form.titulo}
+                        onChange={handleChange}
+                    />
+
+                    <FormInput
+                        label="Precio"
+                        name="precio"
+                        value={form.precio}
+                        onChange={handleChange}
+                        type="number"
+                        min={0}
+                        step="0.01"
+                    />
+                </div>
             </div>
 
-            <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Información del Seguro</h3>
+            {/* Sección de información del seguro */}
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-5 rounded-xl border border-indigo-100">
+                <div className="flex items-center mb-4">
+                    <Shield size={20} className="text-indigo-600 mr-2" />
+                    <h3 className="text-lg font-medium text-gray-800">Información del Seguro</h3>
+                </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Input
-                    id="compania"
-                    name="compania"
-                    label="Compañía Aseguradora"
-                    value={form.compania}
-                    onChange={handleChange}
-                    error={errors.compania}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <FormInput
+                        label="Compañía Aseguradora"
+                        name="compania"
+                        value={form.compania}
+                        onChange={handleChange}
+                    />
 
-                <Input
-                    id="nroPoliza"
-                    name="nroPoliza"
-                    label="Número de Póliza"
-                    value={form.nroPoliza}
-                    onChange={handleChange}
-                    error={errors.nroPoliza}
-                />
+                    <FormInput
+                        label="Número de Póliza"
+                        name="nroPoliza"
+                        value={form.nroPoliza}
+                        onChange={handleChange}
+                    />
 
-                <Input
-                    id="vencimiento"
-                    name="vencimiento"
-                    label="Fecha de Vencimiento"
-                    type="date"
-                    value={form.vencimiento}
-                    onChange={handleChange}
-                    error={errors.vencimiento}
-                />
+                    <FormInput
+                        label="Fecha de Vencimiento"
+                        name="vencimiento"
+                        value={form.vencimiento}
+                        onChange={handleChange}
+                        type="date"
+                        icon={<Calendar size={18} />}
+                    />
+                </div>
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t">
-                <Button
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                <button
                     type="button"
-                    variant="outline"
                     onClick={onCancel}
-                    icon={<X size={18} />}
+                    className="flex items-center px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
                 >
+                    <X size={18} className="mr-2" />
                     Cancelar
-                </Button>
+                </button>
 
-                <Button
+                <button
                     type="submit"
-                    variant="primary"
-                    isLoading={loading}
-                    icon={<Save size={18} />}
+                    className={`flex items-center px-5 py-2.5 rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                    disabled={loading}
                 >
-                    {vehicle ? 'Actualizar' : 'Guardar'} Vehículo
-                </Button>
+                    {loading ? (
+                        <>
+                            <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Guardando...
+                        </>
+                    ) : (
+                        <>
+                            <Save size={18} className="mr-2" />
+                            {vehicle ? 'Actualizar' : 'Guardar'} Vehículo
+                        </>
+                    )}
+                </button>
             </div>
         </form>
     );

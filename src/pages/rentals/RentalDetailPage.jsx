@@ -4,7 +4,7 @@ import Layout from '../../components/layout/Layout';
 import Button from '../../components/common/Button';
 import Modal from '../../components/common/Modal';
 import { rentalService } from '../../services/rental-service';
-import { ArrowLeft, Calendar, Car, User, Truck, FileText, Clipboard, CheckCircle, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Car, User, Truck, FileText, Clipboard, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function RentalDetailPage() {
@@ -20,6 +20,7 @@ export default function RentalDetailPage() {
         observaciones: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [validationErrors, setValidationErrors] = useState({});
 
     useEffect(() => {
         const fetchData = async () => {
@@ -33,7 +34,8 @@ export default function RentalDetailPage() {
                     if (result.data && result.data.lugar_entrega) {
                         setReturnForm(prev => ({
                             ...prev,
-                            lugarDevolucion: result.data.lugar_entrega
+                            lugarDevolucion: result.data.lugar_entrega,
+                            kilometrajeDevolucion: result.data.kilometraje_entrega || ''
                         }));
                     }
                 } else {
@@ -64,10 +66,44 @@ export default function RentalDetailPage() {
             ...prev,
             [name]: value
         }));
+
+        // Limpiar error de validación si el campo ha sido modificado
+        if (validationErrors[name]) {
+            setValidationErrors(prev => ({
+                ...prev,
+                [name]: null
+            }));
+        }
+    };
+
+    const validateReturnForm = () => {
+        const errors = {};
+
+        if (!returnForm.fechaDevolucion) {
+            errors.fechaDevolucion = 'La fecha de devolución es requerida';
+        }
+
+        if (!returnForm.lugarDevolucion) {
+            errors.lugarDevolucion = 'El lugar de devolución es requerido';
+        }
+
+        if (!returnForm.kilometrajeDevolucion) {
+            errors.kilometrajeDevolucion = 'El kilometraje final es requerido';
+        } else if (rental && rental.kilometraje_entrega && parseInt(returnForm.kilometrajeDevolucion) < parseInt(rental.kilometraje_entrega)) {
+            errors.kilometrajeDevolucion = 'El kilometraje final debe ser mayor al de entrega';
+        }
+
+        setValidationErrors(errors);
+        return Object.keys(errors).length === 0;
     };
 
     const handleFinalizeSubmit = async (e) => {
         e.preventDefault();
+
+        if (!validateReturnForm()) {
+            return;
+        }
+
         setSubmitting(true);
 
         try {
@@ -82,7 +118,17 @@ export default function RentalDetailPage() {
                     setRental(updatedRental.data);
                 }
             } else {
-                toast.error(result.msg || 'Error al finalizar el alquiler');
+                if (result.errores) {
+                    // Manejar errores de validación del servidor
+                    const serverErrors = {};
+                    result.errores.forEach(error => {
+                        const field = error.split(' ')[0].toLowerCase();
+                        serverErrors[field] = error;
+                    });
+                    setValidationErrors(serverErrors);
+                } else {
+                    toast.error(result.msg || 'Error al finalizar el alquiler');
+                }
             }
         } catch (error) {
             console.error('Error al finalizar alquiler:', error);
@@ -98,11 +144,24 @@ export default function RentalDetailPage() {
         // Aquí iría la lógica para generar e imprimir el documento
     };
 
+    const calculateDistance = () => {
+        if (rental && rental.kilometraje_entrega && rental.kilometraje_devolucion) {
+            return rental.kilometraje_devolucion - rental.kilometraje_entrega;
+        }
+        return 0;
+    };
+
     if (loading) {
         return (
             <Layout>
                 <div className="flex justify-center items-center h-64">
-                    <p className="text-gray-500">Cargando información del alquiler...</p>
+                    <div className="flex items-center space-x-3">
+                        <svg className="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p className="text-gray-500">Cargando información del alquiler...</p>
+                    </div>
                 </div>
             </Layout>
         );
@@ -121,7 +180,7 @@ export default function RentalDetailPage() {
     return (
         <Layout>
             <div className="space-y-6">
-                {/* Cabecera */}
+                {/* Cabecera con estado del alquiler destacado */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <button
@@ -130,9 +189,19 @@ export default function RentalDetailPage() {
                         >
                             <ArrowLeft size={20} />
                         </button>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            Detalle de Alquiler #{rental.id}
-                        </h1>
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900">
+                                Alquiler #{rental.id}
+                            </h1>
+                            <div className="mt-1">
+                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${rental.fecha_devolucion
+                                    ? 'bg-purple-100 text-purple-800'
+                                    : 'bg-green-100 text-green-800'
+                                    }`}>
+                                    {rental.fecha_devolucion ? 'Finalizado' : 'Activo'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
 
                     <div className="mt-4 sm:mt-0 flex space-x-3">
@@ -156,21 +225,47 @@ export default function RentalDetailPage() {
                     </div>
                 </div>
 
-                {/* Estado del alquiler */}
-                <div className={`p-4 rounded-lg border ${rental.fecha_devolucion
-                        ? 'bg-purple-50 border-purple-200'
-                        : 'bg-green-50 border-green-200'
+                {/* Resumen del alquiler - tarjeta destacada */}
+                <div className={`p-6 rounded-lg border ${rental.fecha_devolucion
+                    ? 'bg-purple-50 border-purple-200'
+                    : 'bg-green-50 border-green-200'
                     }`}>
-                    <div className="flex items-center">
-                        {rental.fecha_devolucion ? (
-                            <CheckCircle size={20} className="text-purple-500 mr-2" />
-                        ) : (
-                            <Calendar size={20} className="text-green-500 mr-2" />
-                        )}
-                        <span className={`font-medium ${rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'
-                            }`}>
-                            {rental.fecha_devolucion ? 'Alquiler Finalizado' : 'Alquiler Activo'}
-                        </span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="flex items-start">
+                            <div className={`rounded-full p-2 mr-3 ${rental.fecha_devolucion ? 'bg-purple-200' : 'bg-green-200'}`}>
+                                <Calendar size={20} className={rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500">Periodo</h3>
+                                <p className={`mt-1 font-medium ${rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'}`}>
+                                    {formatDate(rental.fecha_entrega)} - {rental.fecha_devolucion ? formatDate(rental.fecha_devolucion) : 'Actual'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start">
+                            <div className={`rounded-full p-2 mr-3 ${rental.fecha_devolucion ? 'bg-purple-200' : 'bg-green-200'}`}>
+                                <User size={20} className={rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500">Cliente</h3>
+                                <p className={`mt-1 font-medium ${rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'}`}>
+                                    {rental.cliente_nombre || 'N/A'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start">
+                            <div className={`rounded-full p-2 mr-3 ${rental.fecha_devolucion ? 'bg-purple-200' : 'bg-green-200'}`}>
+                                <Car size={20} className={rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'} />
+                            </div>
+                            <div>
+                                <h3 className="text-sm font-medium text-gray-500">Vehículo</h3>
+                                <p className={`mt-1 font-medium ${rental.fecha_devolucion ? 'text-purple-700' : 'text-green-700'}`}>
+                                    {rental.marca} {rental.modelo} ({rental.patente})
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -321,8 +416,8 @@ export default function RentalDetailPage() {
                                     <div className="mt-1">
                                         <p className="text-gray-900">{rental.kilometraje_devolucion} km</p>
                                         {rental.kilometraje_entrega && rental.kilometraje_devolucion && (
-                                            <p className="text-sm text-gray-500">
-                                                Recorrido: {rental.kilometraje_devolucion - rental.kilometraje_entrega} km
+                                            <p className="text-sm text-gray-500 mt-1 bg-gray-100 px-2 py-1 rounded inline-block">
+                                                Recorrido: <span className="font-medium">{calculateDistance()} km</span>
                                             </p>
                                         )}
                                     </div>
@@ -365,9 +460,9 @@ export default function RentalDetailPage() {
                                     ].map(item => (
                                         <li key={item.key} className="flex items-center">
                                             {rental[item.key] ? (
-                                                <CheckCircle size={16} className="text-green-500 mr-2" />
+                                                <CheckCircle size={16} className="text-green-500 mr-2 flex-shrink-0" />
                                             ) : (
-                                                <XCircle size={16} className="text-red-500 mr-2" />
+                                                <XCircle size={16} className="text-red-500 mr-2 flex-shrink-0" />
                                             )}
                                             <span className="text-sm">{item.label}</span>
                                         </li>
@@ -392,9 +487,9 @@ export default function RentalDetailPage() {
                                     ].map(item => (
                                         <li key={item.key} className="flex items-center">
                                             {rental[item.key] ? (
-                                                <CheckCircle size={16} className="text-green-500 mr-2" />
+                                                <CheckCircle size={16} className="text-green-500 mr-2 flex-shrink-0" />
                                             ) : (
-                                                <XCircle size={16} className="text-red-500 mr-2" />
+                                                <XCircle size={16} className="text-red-500 mr-2 flex-shrink-0" />
                                             )}
                                             <span className="text-sm">{item.label}</span>
                                         </li>
@@ -418,9 +513,9 @@ export default function RentalDetailPage() {
                                     ].map(item => (
                                         <li key={item.key} className="flex items-center">
                                             {rental[item.key] ? (
-                                                <CheckCircle size={16} className="text-green-500 mr-2" />
+                                                <CheckCircle size={16} className="text-green-500 mr-2 flex-shrink-0" />
                                             ) : (
-                                                <XCircle size={16} className="text-red-500 mr-2" />
+                                                <XCircle size={16} className="text-red-500 mr-2 flex-shrink-0" />
                                             )}
                                             <span className="text-sm">{item.label}</span>
                                         </li>
@@ -432,74 +527,107 @@ export default function RentalDetailPage() {
                 </div>
             </div>
 
-            {/* Modal de finalización */}
+            {/* Modal de finalización mejorado */}
             <Modal
                 isOpen={showFinalizeModal}
                 onClose={() => setShowFinalizeModal(false)}
-                title="Finalizar Alquiler"
+                title={
+                    <div className="flex items-center">
+                        <Clipboard size={20} className="text-blue-600 mr-2" />
+                        <span className="text-lg font-medium">Finalizar Alquiler</span>
+                    </div>
+                }
                 size="md"
             >
-                <form onSubmit={handleFinalizeSubmit}>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Fecha de Devolución
-                            </label>
-                            <input
-                                type="date"
-                                name="fechaDevolucion"
-                                value={returnForm.fechaDevolucion}
-                                onChange={handleReturnFormChange}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                required
-                            />
-                        </div>
+                <form onSubmit={handleFinalizeSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                            Fecha de Devolución <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="date"
+                            name="fechaDevolucion"
+                            value={returnForm.fechaDevolucion}
+                            onChange={handleReturnFormChange}
+                            className={`mt-1 block w-full px-3 py-2 border ${validationErrors.fechaDevolucion ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-md shadow-sm sm:text-sm`}
+                            required
+                        />
+                        {validationErrors.fechaDevolucion && (
+                            <p className="mt-1 text-sm text-red-600">{validationErrors.fechaDevolucion}</p>
+                        )}
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Lugar de Devolución
-                            </label>
-                            <input
-                                type="text"
-                                name="lugarDevolucion"
-                                value={returnForm.lugarDevolucion}
-                                onChange={handleReturnFormChange}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                                required
-                            />
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                            Lugar de Devolución <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="lugarDevolucion"
+                            value={returnForm.lugarDevolucion}
+                            onChange={handleReturnFormChange}
+                            className={`mt-1 block w-full px-3 py-2 border ${validationErrors.lugarDevolucion ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-md shadow-sm sm:text-sm`}
+                            required
+                        />
+                        {validationErrors.lugarDevolucion && (
+                            <p className="mt-1 text-sm text-red-600">{validationErrors.lugarDevolucion}</p>
+                        )}
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Kilometraje Final
-                            </label>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                            Kilometraje Final <span className="text-red-500">*</span>
+                        </label>
+                        <div className="mt-1 relative rounded-md shadow-sm">
                             <input
                                 type="number"
                                 name="kilometrajeDevolucion"
                                 value={returnForm.kilometrajeDevolucion}
                                 onChange={handleReturnFormChange}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                className={`block w-full px-3 py-2 border ${validationErrors.kilometrajeDevolucion ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-gray-300 focus:ring-blue-500 focus:border-blue-500'} rounded-md shadow-sm sm:text-sm`}
                                 required
                                 min={rental?.kilometraje_entrega || 0}
                             />
-                            {rental?.kilometraje_entrega && (
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Kilometraje de entrega: {rental.kilometraje_entrega} km
-                                </p>
-                            )}
+                            <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                <span className="text-gray-500 sm:text-sm">km</span>
+                            </div>
                         </div>
+                        {rental?.kilometraje_entrega && (
+                            <p className="text-xs text-gray-500 mt-1">
+                                Kilometraje de entrega: <span className="font-medium">{rental.kilometraje_entrega} km</span>
+                            </p>
+                        )}
+                        {validationErrors.kilometrajeDevolucion && (
+                            <p className="mt-1 text-sm text-red-600">{validationErrors.kilometrajeDevolucion}</p>
+                        )}
+                    </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                                Observaciones
-                            </label>
-                            <textarea
-                                name="observaciones"
-                                value={returnForm.observaciones}
-                                onChange={handleReturnFormChange}
-                                rows={3}
-                                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            ></textarea>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">
+                            Observaciones
+                        </label>
+                        <textarea
+                            name="observaciones"
+                            value={returnForm.observaciones}
+                            onChange={handleReturnFormChange}
+                            rows={3}
+                            className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                            placeholder="Detalles adicionales sobre la devolución del vehículo..."
+                        ></textarea>
+                    </div>
+
+                    {/* Resumen */}
+                    <div className="mt-5 bg-blue-50 p-4 rounded-md">
+                        <h4 className="text-sm font-medium text-blue-800 mb-2">Resumen del alquiler</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div className="text-gray-600">Vehículo:</div>
+                            <div className="font-medium">{rental.marca} {rental.modelo}</div>
+
+                            <div className="text-gray-600">Cliente:</div>
+                            <div className="font-medium">{rental.cliente_nombre}</div>
+
+                            <div className="text-gray-600">Fecha de entrega:</div>
+                            <div className="font-medium">{formatDate(rental.fecha_entrega)}</div>
                         </div>
                     </div>
 
@@ -526,4 +654,3 @@ export default function RentalDetailPage() {
         </Layout>
     );
 }
-

@@ -1,4 +1,4 @@
-// src/services/auth-service.ts
+// src/services/auth-service.js
 import axios from 'axios';
 
 // 1. Crear instancia de axios correctamente

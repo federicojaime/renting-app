@@ -7,7 +7,11 @@ export const rentalService = {
             return response.data;
         } catch (error) {
             console.error('Error al obtener alquileres:', error);
-            throw error;
+            return error.customResponse || {
+                ok: false,
+                msg: 'Error al obtener alquileres',
+                data: []
+            };
         }
     },
 
@@ -17,7 +21,11 @@ export const rentalService = {
             return response.data;
         } catch (error) {
             console.error(`Error al obtener alquiler ${id}:`, error);
-            throw error;
+            return error.customResponse || {
+                ok: false,
+                msg: `Error al obtener alquiler ${id}`,
+                data: null
+            };
         }
     },
 
