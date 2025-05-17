@@ -30,9 +30,9 @@ api.interceptors.response.use(
         return response;
     },
     (error) => {
-        // Manejar errores comunes como token expirado (401)
-        if (error.response && error.response.status === 401) {
-            // Token expirado o inválido
+        // Solo redireccionar en caso de error 401 confirmado
+        if (error.response && error.response.status === 401 && window.location.pathname !== '/login') {
+            console.log('Token expirado o inválido, redirigiendo al login');
             authService.logout();
             window.location.href = '/login';
         }

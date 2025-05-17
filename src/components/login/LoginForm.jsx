@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../../services/auth-service';
 
+
+
 export default function LoginForm() {
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({ email: '', password: '' });
@@ -25,35 +27,21 @@ export default function LoginForm() {
       const result = await authService.login(credentials);
       console.log('Resultado del login:', result);
 
-      // Si la respuesta tiene ok:true, consideramos que es exitoso
       if (result && result.ok) {
-        console.log('Login exitoso');
-
-        // Crear un objeto authData con token y usuario
-        const authData = {
-          // Si la respuesta tiene un token, lo usamos
-          // Si no, creamos uno temporal
-          token: result.data?.token || result.jwt || 'token-generado-' + Date.now(),
-
-          // Datos del usuario, ya sea de la respuesta o de las credenciales
-          user: result.data?.user || {
-            email: credentials.email,
-            name: 'Usuario'
-          }
+        const jwt = result.data.jwt;
+        const user = {
+          firstname: result.data.firstname,
+          lastname: result.data.lastname,
+          email: result.data.email,
         };
 
-        // Guardar los datos de autenticación
-        const saved = authService.setAuthData(authData);
-        console.log('Datos guardados:', saved);
+        // Guardar en localStorage
+        localStorage.setItem('token', jwt.replace('Bearer ', ''));
+        localStorage.setItem('user', JSON.stringify(user));
 
-        // Verificar que se haya guardado el token
-        const storedToken = localStorage.getItem('token');
-        console.log('Token almacenado después de guardar:', storedToken);
-
-        // Forzar una recarga completa para ir al dashboard
-        window.location.href = '/dashboard';
+        navigate('/dashboard');
       } else {
-        setError('Credenciales incorrectas');
+        setError(result?.msg || 'Credenciales incorrectas');
       }
     } catch (error) {
       console.error('Error completo:', error);
@@ -62,8 +50,7 @@ export default function LoginForm() {
       setLoading(false);
     }
   };
-
-
+  
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && (

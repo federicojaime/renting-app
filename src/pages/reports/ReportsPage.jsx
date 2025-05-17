@@ -16,7 +16,7 @@ import {
     PointElement,
     Title,
     Tooltip,
-    Legend
+    Legend 
 } from 'chart.js';
 
 // Registrar los componentes de Chart.js
@@ -759,7 +759,7 @@ export default function ReportsPage() {
 
                         <div className="border rounded-lg p-4 hover:bg-gray-50 transition-colors cursor-pointer">
                             <div className="flex items-center mb-2">
-                                <User size={20} className="text-purple-500 mr-2" />
+                                <FileText size={20} className="text-purple-500 mr-2" />
                                 <h4 className="font-medium">Actividad de Clientes</h4>
                             </div>
                             <p className="text-sm text-gray-600">Análisis de los clientes más activos</p>
