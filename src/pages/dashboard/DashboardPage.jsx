@@ -58,12 +58,12 @@ const StatCard = ({ title, value, icon, trend, colorScheme = "blue" }) => {
                     <div className="text-2xl font-bold text-gray-900 mt-1 mb-1">
                         {value || '0'}
                     </div>
-                    {trend && (
+                    {/** {trend && (
                         <p className={`text-xs font-medium flex items-center mt-2 ${trend > 0 ? colors.trendUpColor : colors.trendDownColor}`}>
                             <TrendingUp size={14} className="mr-1" />
                             <span>{trend}% vs. mes anterior</span>
                         </p>
-                    )}
+                    )}*/}
                 </div>
                 <div className={`p-3 rounded-full ${colors.bgColor}`}>
                     {React.cloneElement(icon, { className: colors.iconColor, size: 24 })}
@@ -78,7 +78,7 @@ const RecentRentalsTable = ({ rentals, searchTerm, onSearch }) => {
     // Filtrar alquileres según término de búsqueda
     const filteredRentals = rentals.filter(rental => {
         if (!searchTerm) return true;
-        
+
         const searchLower = searchTerm.toLowerCase();
         return (
             (rental.clientName && rental.clientName.toLowerCase().includes(searchLower)) ||
@@ -349,7 +349,7 @@ export default function DashboardPage() {
             let defaultRentals = [
                 {
                     id: 1,
-                    clientName: 'Federico Jaime',
+                    clientName: 'Federicos Jaimes',
                     vehicleInfo: 'AC-NISSAN 15-FRONTIER S 4X2 MT 2.3 D CD - AF526UA',
                     date: '6/2/2025',
                     status: 'Finalizado'
@@ -477,6 +477,7 @@ export default function DashboardPage() {
             </Layout>
         );
     }
+    console.log({ stats });
 
     return (
         <Layout>
@@ -502,7 +503,7 @@ export default function DashboardPage() {
                         title="Alquileres Activos"
                         value={stats.activeRentals}
                         icon={<Calendar />}
-                        trend={8}
+                        trend={128}
                         colorScheme="green"
                     />
 
@@ -527,8 +528,8 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Tabla de alquileres recientes - 7 columnas */}
                     <div className="lg:col-span-7">
-                        <RecentRentalsTable 
-                            rentals={recentRentals} 
+                        <RecentRentalsTable
+                            rentals={recentRentals}
                             searchTerm={searchTerm}
                             onSearch={handleSearch}
                         />

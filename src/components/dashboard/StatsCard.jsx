@@ -18,6 +18,7 @@ export default function StatsCard({ title, value, icon, change, color = 'blue' }
                     <h3 className="text-sm font-medium text-gray-500">{title}</h3>
                     <p className="text-2xl font-semibold mt-1">{value}</p>
 
+                    {/** 
                     {change && (
                         <div className={`flex items-center mt-1 ${change > 0 ? 'text-green-600' : 'text-red-600'
                             }`}>
@@ -26,7 +27,7 @@ export default function StatsCard({ title, value, icon, change, color = 'blue' }
                             </span>
                             <span className="text-xs ml-1">vs. mes anterior</span>
                         </div>
-                    )}
+                    )}*/}
                 </div>
             </div>
         </div>

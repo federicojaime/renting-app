@@ -19,16 +19,16 @@ import { authService } from './services/auth-service';
 const ProtectedRoute = ({ children }) => {
   // Verificar la autenticación
   const isAuthenticated = authService.isAuthenticated();
-  console.log('¿Está autenticado?', isAuthenticated);
+  //console.log('¿Está autenticado?', isAuthenticated);
 
   // Si no está autenticado, redirigir al login
   if (!isAuthenticated) {
-    console.log('No autenticado, redirigiendo a login');
+    //console.log('No autenticado, redirigiendo a login');
     return <Navigate to="/login" replace />;
   }
 
   // Si está autenticado, mostrar el contenido
-  console.log('Autenticado, mostrando ruta protegida');
+  //console.log('Autenticado, mostrando ruta protegida');
   return children;
 };
 
@@ -109,6 +109,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
 
         <Route
           path="/reports"

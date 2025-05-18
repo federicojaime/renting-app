@@ -134,7 +134,7 @@ export default function DashboardPage() {
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     <tr>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            Federico Jaime
+                                            Federicssso Jaimes
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             AC-NISSAN 15-FRONTIER S 4X2 MT 2.3 D CD - AF526UA

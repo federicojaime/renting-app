@@ -34,22 +34,22 @@ export const authService = {
         const userData = authData?.user || { email: "usuario@ejemplo.com" };
         localStorage.setItem('user', JSON.stringify(userData));
 
-        console.log('Token guardado:', token);
-        console.log('Usuario guardado:', userData);
+        //console.log('Token guardado:', token);
+        //console.log('Usuario guardado:', userData);
 
         return true;
     },
 
     isAuthenticated: () => {
         const token = localStorage.getItem('token');
-        console.log('Verificando autenticación, token:', token);
+        //console.log('Verificando autenticación, token:', token);
 
         // Si hay token, consideramos autenticado
         if (token) {
-            console.log('Usuario autenticado');
+            //console.log('Usuario autenticado');
             return true;
         } else {
-            console.log('Usuario NO autenticado');
+            //console.log('Usuario NO autenticado');
             return false;
         }
     },

@@ -26,10 +26,15 @@ export default function RentalDetailPage() {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const result = await rentalService.getRental(id);
-                if (result.ok) {
-                    setRental(result.data);
-
+                // Solo intentar obtener datos si no es una ruta de creación
+                if (id !== 'new') {
+                    const result = await rentalService.getRental(id);
+                    if (result.ok) {
+                        setRental(result.data);
+                    } else {
+                        toast.error('Error al cargar el alquiler');
+                        navigate('/rentals');
+                    }
                     // Pre-llenar formulario de devolución si es necesario
                     if (result.data && result.data.lugar_entrega) {
                         setReturnForm(prev => ({
