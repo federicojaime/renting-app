@@ -1,3 +1,4 @@
+// Versión corregida de VehicleDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
@@ -45,7 +46,7 @@ export default function VehicleDetailPage() {
                         const rentalsRes = await rentalService.getVehicleRentals(id);
 
                         if (rentalsRes.ok) {
-                            setRentals(rentalsRes.data);
+                            setRentals(rentalsRes.data || []);
                         } else {
                             console.warn("No se pudieron cargar los alquileres:", rentalsRes.msg);
                             setRentals([]);
@@ -157,6 +158,9 @@ export default function VehicleDetailPage() {
         const date = new Date(dateString);
         return date.toLocaleDateString();
     };
+
+    // Verificar de forma segura si hay alquileres
+    const hasRentals = rentals && rentals.length > 0;
 
     return (
         <Layout>
@@ -342,7 +346,7 @@ export default function VehicleDetailPage() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {(skipRentals || rentals.length === 0) ? (
+                                {(skipRentals || !hasRentals) ? (
                                     <tr>
                                         <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
                                             {skipRentals ?
@@ -383,7 +387,7 @@ export default function VehicleDetailPage() {
                         </table>
                     </div>
 
-                    {!skipRentals && rentals.length > 0 && (
+                    {!skipRentals && hasRentals && (
                         <div className="p-4 bg-gray-50 border-t">
                             <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-700">
@@ -402,7 +406,7 @@ export default function VehicleDetailPage() {
                 </div>
 
                 {/* Acciones rápidas */}
-                {(rentals.length === 0 || skipRentals) && (
+                {(!hasRentals || skipRentals) && (
                     <div className="flex justify-center">
                         <Link
                             to="/rentals/new"

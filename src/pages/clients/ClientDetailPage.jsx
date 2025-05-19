@@ -1,3 +1,4 @@
+// Fixed version of ClientDetailPage.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import Layout from '../../components/layout/Layout';
@@ -21,13 +22,13 @@ export default function ClientDetailPage() {
         const fetchData = async () => {
             setLoading(true);
             
-            // Verificar si debemos saltar la carga de alquileres
+            // Verify if we should skip loading rentals
             const urlParams = new URLSearchParams(window.location.search);
             const shouldSkipRentals = urlParams.get('skipRentals') === 'true';
             setSkipRentals(shouldSkipRentals);
             
             try {
-                // Obtener datos del cliente
+                // Get client data
                 const clientRes = await clientService.getClient(id);
                 
                 if (clientRes.ok) {
@@ -38,13 +39,13 @@ export default function ClientDetailPage() {
                     return;
                 }
                 
-                // Cargar alquileres solo si no debemos saltarlos
+                // Load rentals only if we shouldn't skip them
                 if (!shouldSkipRentals) {
                     try {
                         const rentalsRes = await rentalService.getClientRentals(id);
                         
                         if (rentalsRes.ok) {
-                            setRentals(rentalsRes.data);
+                            setRentals(rentalsRes.data || []);
                         } else {
                             console.warn("No se pudieron cargar los alquileres:", rentalsRes.msg);
                             setRentals([]);
@@ -86,7 +87,7 @@ export default function ClientDetailPage() {
         fetchData();
     }, [id, navigate]);
     
-    // Función para manejar la actualización del cliente
+    // Function to handle the client update
     const handleUpdateClient = async (formData) => {
         try {
             const result = await clientService.updateClient(id, {
@@ -100,7 +101,7 @@ export default function ClientDetailPage() {
             
             if (result.ok) {
                 setShowModal(false);
-                // Actualizar el cliente en la página sin recargar
+                // Update the client in the page without reloading
                 setClient({
                     ...client,
                     tipo_cliente: formData.tipo_cliente,
@@ -146,20 +147,23 @@ export default function ClientDetailPage() {
         );
     }
 
-    // Formatear fecha para mostrar
+    // Format date to display
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
         const date = new Date(dateString);
         return date.toLocaleDateString();
     };
 
-    // Obtener el nombre para mostrar según tipo de cliente
+    // Get name to display according to client type
     const clientName = client.tipo_cliente === 'persona' ? client.nombre : client.razon_social;
+
+    // Safely check for rentals.length to avoid the null error
+    const hasRentals = rentals && rentals.length > 0;
 
     return (
         <Layout>
             <div className="space-y-6">
-                {/* Cabecera */}
+                {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <button
@@ -185,7 +189,7 @@ export default function ClientDetailPage() {
                     </div>
                 </div>
 
-                {/* Información del cliente */}
+                {/* Client information */}
                 <div className="bg-white shadow-md rounded-lg overflow-hidden">
                     <div className="p-6 border-b">
                         <h2 className="text-lg font-medium flex items-center">
@@ -244,7 +248,7 @@ export default function ClientDetailPage() {
                     </div>
                 </div>
 
-                {/* Historial de alquileres */}
+                {/* Rental history */}
                 <div className="bg-white shadow-md rounded-lg overflow-hidden">
                     <div className="p-6 border-b">
                         <h2 className="text-lg font-medium flex items-center">
@@ -268,7 +272,7 @@ export default function ClientDetailPage() {
                                     </p>
                                     <button 
                                         onClick={() => {
-                                            window.location.href = `/clients/${id}`; // Recargar sin skipRentals
+                                            window.location.href = `/clients/${id}`; // Reload without skipRentals
                                         }}
                                         className="mt-2 text-xs font-medium text-amber-800 hover:text-amber-900 underline"
                                     >
@@ -291,7 +295,7 @@ export default function ClientDetailPage() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {(skipRentals || rentals.length === 0) ? (
+                                {(skipRentals || !hasRentals) ? (
                                     <tr>
                                         <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
                                             {skipRentals ? 
@@ -332,7 +336,7 @@ export default function ClientDetailPage() {
                         </table>
                     </div>
 
-                    {!skipRentals && rentals.length > 0 && (
+                    {!skipRentals && hasRentals && (
                         <div className="p-4 bg-gray-50 border-t">
                             <div className="flex justify-between items-center">
                                 <div className="text-sm text-gray-700">
@@ -350,8 +354,8 @@ export default function ClientDetailPage() {
                     )}
                 </div>
 
-                {/* Acciones rápidas */}
-                {(rentals.length === 0 || skipRentals) && (
+                {/* Quick actions */}
+                {(!hasRentals || skipRentals) && (
                     <div className="flex justify-center">
                         <Link
                             to="/rentals/new"
@@ -364,7 +368,7 @@ export default function ClientDetailPage() {
                 )}
             </div>
 
-            {/* Modal de edición */}
+            {/* Modal for editing */}
             <Modal
                 isOpen={showModal}
                 onClose={() => setShowModal(false)}
@@ -383,7 +387,7 @@ export default function ClientDetailPage() {
                     };
                     handleUpdateClient(formData);
                 }} className="space-y-6">
-                    {/* Selector de tipo de cliente */}
+                    {/* Client type selector */}
                     <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
                         <input type="hidden" name="tipo_cliente" defaultValue={client.tipo_cliente} />
                         <div className="flex w-full">
@@ -418,7 +422,7 @@ export default function ClientDetailPage() {
                         </div>
                     </div>
 
-                    {/* Campos según tipo de cliente */}
+                    {/* Fields by client type */}
                     <div className="space-y-5">
                         {client.tipo_cliente === 'persona' ? (
                             <div className="form-group">
@@ -519,7 +523,7 @@ export default function ClientDetailPage() {
                         </div>
                     </div>
 
-                    {/* Botones de acción */}
+                    {/* Action buttons */}
                     <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-100">
                         <button
                             type="button"
